@@ -12,7 +12,6 @@
   "type": "commonjs",
   "private": "true",
   "dependencies": {
-    "@capacitor-community/media": "^9.1.0",
     "@capacitor/android": "^8.3.1",
     "@capacitor/app": "^8.1.0",
     "@capacitor/camera": "^8.2.0",

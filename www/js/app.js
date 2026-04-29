@@ -10,6 +10,9 @@ let appSettings = { apiKey: '', prompt: '', model: 'nanabanana1' }
 const logBuffer = []
 const LOG_MAX = 500
 
+const _origLog = console.log.bind(console)
+const _origErr = console.error.bind(console)
+
 function log(...args) {
   const t = new Date().toISOString().slice(11, 23)
   const msg = args.map(a => {
@@ -19,13 +22,11 @@ function log(...args) {
   }).join(' ')
   logBuffer.push(t + ' ' + msg)
   if (logBuffer.length > LOG_MAX) logBuffer.shift()
-  if (typeof _origConsoleLog === 'function') _origConsoleLog(t, ...args)
+  _origLog(t, ...args)
 }
 
-const _origConsoleLog = console.log.bind(console)
-const _origConsoleError = console.error.bind(console)
-console.log = (...args) => { log('[log]', ...args); _origConsoleLog(...args) }
-console.error = (...args) => { log('[err]', ...args); _origConsoleError(...args) }
+console.log = (...args) => log('[log]', ...args)
+console.error = (...args) => { log('[err]', ...args); _origErr(...args) }
 window.addEventListener('error', e => log('[window.error]', e.message, 'at', e.filename + ':' + e.lineno))
 window.addEventListener('unhandledrejection', e => log('[unhandled]', e.reason?.message || e.reason))
 
@@ -85,12 +86,9 @@ async function ensureCameraPermission() {
     if (!Camera) { log('Camera plugin missing — skip permission'); return }
     const status = await Camera.checkPermissions()
     log('permissions before:', status)
-    const needed = []
-    if (status.camera !== 'granted') needed.push('camera')
-    if (status.photos !== 'granted') needed.push('photos')
-    if (needed.length) {
-      const after = await Camera.requestPermissions({ permissions: needed })
-      log('permissions after request', needed, '→', after)
+    if (status.camera !== 'granted') {
+      const after = await Camera.requestPermissions({ permissions: ['camera'] })
+      log('permissions after:', after)
     } else log('permissions already granted')
   } catch (e) { log('permission error:', e) }
 }

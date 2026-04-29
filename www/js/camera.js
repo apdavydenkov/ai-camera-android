@@ -79,7 +79,7 @@ function updateHdrSetting() {
 
 function playShutter() {
   if (!camSettings.sound) return
-  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  const ctx = new AudioContext()
   const buf = ctx.createBuffer(1, 2000, ctx.sampleRate)
   const d = buf.getChannelData(0)
   for (let i = 0; i < 2000; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / 200)
@@ -224,14 +224,14 @@ function applyNightMode() {
   } catch {}
 }
 
-const processingCount = { n: 0 }
+let processingCount = 0
 
 function showProcessing(active) {
-  if (active) processingCount.n++; else processingCount.n = Math.max(0, processingCount.n - 1)
+  processingCount = active ? processingCount + 1 : Math.max(0, processingCount - 1)
   const el = $('procBadge')
-  if (processingCount.n > 0) {
+  if (processingCount > 0) {
     el.classList.remove('hidden'); el.classList.add('flex')
-    $('procBadgeText').textContent = processingCount.n > 1 ? 'Обработка (' + processingCount.n + ')...' : 'Обработка...'
+    $('procBadgeText').textContent = processingCount > 1 ? 'Обработка (' + processingCount + ')...' : 'Обработка...'
   } else {
     el.classList.add('hidden'); el.classList.remove('flex')
   }
