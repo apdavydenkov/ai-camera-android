@@ -4,12 +4,14 @@ let flashMode = 0
 async function startCamera() {
   try {
     if (stream) stream.getTracks().forEach(t => t.stop())
+    log('startCamera: requesting getUserMedia facingMode=', facingMode)
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
     })
     $('video').srcObject = stream
     await $('video').play()
-  } catch (e) { console.error('Camera:', e) }
+    log('startCamera: stream active tracks=', stream.getVideoTracks().length)
+  } catch (e) { log('startCamera error:', e); notify('Камера: ' + (e?.message || e)) }
 }
 
 function switchCamera() {
@@ -267,6 +269,7 @@ async function shoot() {
   const aiActive = !!(appSettings.apiKey && appSettings.prompt)
 
   showSaveOverlay(true)
+  log('shoot: aiActive=', aiActive, 'originals=', camSettings.originals, 'size=', w + 'x' + h)
   try {
     if (!aiActive || camSettings.originals) {
       await saveToGallery(dataUrl)
@@ -279,7 +282,7 @@ async function shoot() {
       processAI(dataUrl).finally(() => showProcessing(false))
     }
   } catch (e) {
-    console.error('shoot:', e)
+    log('shoot error:', e)
     showSaveOverlay(false)
     notify('Не удалось сохранить: ' + (e?.message || e))
   }

@@ -65,3 +65,21 @@ function openDevSettings() {
 function closeDevSettings() {
   closeScreen('devView')
 }
+
+function refreshLogs() {
+  $('logsContent').textContent = getLogs() || '(empty)'
+}
+
+function openLogs() {
+  refreshLogs()
+  openScreen('logsView')
+}
+
+function closeLogs() {
+  closeScreen('logsView')
+}
+
+function clearLogsAndRefresh() {
+  clearLogs()
+  refreshLogs()
+}

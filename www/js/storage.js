@@ -30,38 +30,58 @@ const ALBUM_NAME = 'AI Camera'
 let albumId = null
 
 async function ensureAlbum() {
-  if (albumId) return albumId
+  if (albumId) { log('ensureAlbum: cached', albumId); return albumId }
   const Media = plugins().Media
-  if (!Media) return null
+  if (!Media) { log('ensureAlbum: Media plugin missing'); return null }
   try {
     let r = await Media.getAlbums()
+    log('getAlbums: count=', (r.albums || []).length, 'names=', (r.albums || []).map(a => a.name))
     let alb = (r.albums || []).find(a => a.name === ALBUM_NAME)
     if (!alb) {
+      log('createAlbum:', ALBUM_NAME)
       await Media.createAlbum({ name: ALBUM_NAME })
       r = await Media.getAlbums()
       alb = (r.albums || []).find(a => a.name === ALBUM_NAME)
+      log('after createAlbum, found=', !!alb)
     }
-    if (alb) albumId = alb.identifier
-  } catch (e) { console.error('ensureAlbum:', e) }
+    if (alb) { albumId = alb.identifier; log('albumId=', albumId) }
+  } catch (e) { log('ensureAlbum error:', e) }
   return albumId
 }
 
 async function saveToGallery(dataUrl) {
   const Media = plugins().Media
-  if (!Media) throw new Error('Media plugin missing')
+  if (!Media) { log('saveToGallery: Media plugin missing'); throw new Error('Media plugin missing') }
   const opts = { path: dataUrl }
   const id = await ensureAlbum()
   if (id) opts.albumIdentifier = id
-  const r = await Media.savePhoto(opts)
-  return r?.filePath || null
+  log('savePhoto: pathLen=', dataUrl.length, 'album=', id)
+  try {
+    const r = await Media.savePhoto(opts)
+    log('savePhoto OK filePath=', r?.filePath)
+    return r?.filePath || null
+  } catch (e) {
+    log('savePhoto error:', e)
+    throw e
+  }
 }
 
 async function openSystemGallery() {
+  const GalleryOpener = plugins().GalleryOpener
+  if (GalleryOpener) {
+    try {
+      log('GalleryOpener.open call')
+      await GalleryOpener.open()
+      log('GalleryOpener.open ok')
+      return
+    } catch (e) { log('GalleryOpener.open error:', e) }
+  } else log('GalleryOpener plugin missing')
+
   const App = plugins().App
-  if (!App) return
-  try {
-    await App.openUrl({ url: 'content://media/external/images/media' })
-  } catch (e) {
-    console.error('openUrl gallery:', e)
+  if (App) {
+    try {
+      log('App.openUrl fallback')
+      await App.openUrl({ url: 'content://media/external/images/media' })
+    } catch (e) { log('App.openUrl error:', e) }
   }
 }
