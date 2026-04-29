@@ -164,10 +164,12 @@ html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overs
     <div class="s-header"><div class="s-bar">
       <button onclick="closeLogs()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <h2>Логи</h2>
-      <button onclick="refreshLogs()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></button>
-      <button onclick="clearLogsAndRefresh()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+      <button onclick="copyLogs()" class="s-back" title="Копировать"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+      <button onclick="shareLogs()" class="s-back" title="Поделиться"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg></button>
+      <button onclick="refreshLogs()" class="s-back" title="Обновить"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></button>
+      <button onclick="clearLogsAndRefresh()" class="s-back" title="Очистить"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
     </div></div>
-    <pre id="logsContent" class="flex-1 overflow-auto p-3 text-[11px] leading-tight text-neutral-300 font-mono whitespace-pre-wrap break-words m-0 bg-neutral-950"></pre>
+    <pre id="logsContent" class="flex-1 overflow-auto p-3 text-[11px] leading-tight text-neutral-300 font-mono whitespace-pre-wrap break-words m-0 bg-neutral-950 select-text"></pre>
   </div>
 </div>
 

@@ -83,3 +83,31 @@ function clearLogsAndRefresh() {
   clearLogs()
   refreshLogs()
 }
+
+async function copyLogs() {
+  const text = getLogs()
+  const Clipboard = window.Capacitor?.Plugins?.Clipboard
+  try {
+    if (Clipboard) {
+      await Clipboard.write({ string: text })
+    } else if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      throw new Error('No clipboard API')
+    }
+    notify('Логи скопированы (' + text.length + ' симв.)')
+  } catch (e) {
+    notify('Копировать не удалось: ' + (e?.message || e))
+  }
+}
+
+async function shareLogs() {
+  const text = getLogs()
+  const Share = window.Capacitor?.Plugins?.Share
+  if (!Share) { notify('Share плагин недоступен'); return }
+  try {
+    await Share.share({ title: 'Логи AI Camera', text, dialogTitle: 'Отправить логи' })
+  } catch (e) {
+    notify('Поделиться не удалось: ' + (e?.message || e))
+  }
+}
