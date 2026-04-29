@@ -1,18 +1,27 @@
-let stream = null, facingMode = 'environment'
+let stream = null
+let facingMode = 'environment'
 let flashMode = 0
+let processingCount = 0
+
+const MODELS = {
+  nanabanana1: 'google/gemini-2.5-flash-image',
+  nb2: 'google/gemini-3.1-flash-image-preview'
+}
 
 async function startCamera() {
   try {
     if (stream) stream.getTracks().forEach(t => t.stop())
-    log('startCamera: requesting getUserMedia facingMode=', facingMode)
+    log('startCamera:', facingMode)
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false
     })
     $('video').srcObject = stream
     await $('video').play()
-    log('startCamera: stream active tracks=', stream.getVideoTracks().length)
+    log('startCamera: ok')
   } catch (e) { log('startCamera error:', e); notify('Камера: ' + (e?.message || e)) }
 }
+
+function track() { return stream?.getVideoTracks()[0] }
 
 function switchCamera() {
   facingMode = facingMode === 'environment' ? 'user' : 'environment'
@@ -28,54 +37,32 @@ $('cameraView').addEventListener('click', e => {
   r.classList.remove('hidden')
   r.animate([{ transform: 'scale(1.5)', opacity: 0 }, { opacity: 1, offset: .5 }, { transform: 'scale(1)', opacity: 0 }], 400)
   setTimeout(() => r.classList.add('hidden'), 400)
-  try {
-    const t = stream?.getVideoTracks()[0]
-    if (t) t.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] })
-  } catch {}
+  try { track()?.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] }) } catch {}
 })
 
 ;(function() {
   let startDist = 0, startZoom = 1
   const el = $('cameraView')
-  function dist(t) { return Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY) }
+  const dist = t => Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY)
   el.addEventListener('touchstart', e => {
     if (e.touches.length === 2) {
       startDist = dist(e.touches)
-      try { startZoom = stream?.getVideoTracks()[0]?.getSettings()?.zoom || 1 } catch { startZoom = 1 }
+      try { startZoom = track()?.getSettings()?.zoom || 1 } catch { startZoom = 1 }
     }
   })
   el.addEventListener('touchmove', e => {
     if (e.touches.length !== 2 || !startDist) return
     e.preventDefault()
-    const scale = dist(e.touches) / startDist
     try {
-      const t = stream?.getVideoTracks()[0]
+      const t = track()
       const caps = t?.getCapabilities?.()
       if (!caps?.zoom) return
-      const z = Math.max(caps.zoom.min, Math.min(caps.zoom.max, startZoom * scale))
+      const z = Math.max(caps.zoom.min, Math.min(caps.zoom.max, startZoom * (dist(e.touches) / startDist)))
       t.applyConstraints({ advanced: [{ zoom: z }] })
     } catch {}
   }, { passive: false })
   el.addEventListener('touchend', () => { startDist = 0 })
 })()
-
-function toggleHdr() {
-  camSettings.hdr = !camSettings.hdr
-  saveCamSettings()
-  updateHdrBtn()
-  updateHdrSetting()
-}
-
-function updateHdrBtn() {
-  const btn = $('hdrBtn')
-  btn.classList.toggle('text-cam-accent', camSettings.hdr)
-  btn.classList.toggle('text-white/30', !camSettings.hdr)
-}
-
-function updateHdrSetting() {
-  const btn = $('togHdr')
-  if (btn) applyToggle(btn, camSettings.hdr)
-}
 
 function playShutter() {
   if (!camSettings.sound) return
@@ -97,46 +84,29 @@ function toggleFlashMode() {
 }
 
 async function torchOn() {
-  if (flashMode === 2 || !stream) return false
+  if (flashMode === 2 || !stream) return
   try {
-    const t = stream.getVideoTracks()[0]
-    if (t.getCapabilities?.()?.torch) {
-      await t.applyConstraints({ advanced: [{ torch: true }] })
-      return true
-    }
+    const t = track()
+    if (t?.getCapabilities?.()?.torch) await t.applyConstraints({ advanced: [{ torch: true }] })
   } catch {}
-  return false
 }
 
 async function torchOff() {
-  try {
-    const t = stream?.getVideoTracks()[0]
-    if (t) await t.applyConstraints({ advanced: [{ torch: false }] })
-  } catch {}
+  try { await track()?.applyConstraints({ advanced: [{ torch: false }] }) } catch {}
 }
-
-let currentMode = 'photo'
 
 function setMode(el, mode) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.replace('text-cam-accent', 'text-white/50'))
   el.classList.replace('text-white/50', 'text-cam-accent')
-  currentMode = mode
-  const si = $('shutterInner')
 
-  si.className = 'absolute inset-1 rounded-full bg-white transition-transform active:scale-85'
-  $('shutter').style.borderColor = 'white'
   $('modeOverlay').innerHTML = ''
   $('proControls').classList.add('hidden')
-
   resetCameraAuto()
 
   if (mode === 'pro') {
     $('proControls').classList.remove('hidden')
     $('modeOverlay').innerHTML = '<span class="bg-black/50 px-2.5 py-1 rounded-lg text-xs font-semibold text-cam-accent">PRO</span>'
     initProControls()
-  } else if (mode === 'video') {
-    $('shutter').style.borderColor = '#ef4444'
-    si.className = 'absolute inset-1 rounded-full bg-cam-red transition-transform active:scale-85'
   } else if (mode === 'night') {
     $('modeOverlay').innerHTML = '<span class="flex items-center gap-1.5 bg-black/50 px-3 py-1.5 rounded-full text-xs text-cam-accent"><svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>Ночь</span>'
     applyNightMode()
@@ -144,102 +114,91 @@ function setMode(el, mode) {
 }
 
 function resetCameraAuto() {
-  try {
-    const t = stream?.getVideoTracks()[0]
-    if (!t) return
-    t.applyConstraints({ advanced: [{ exposureMode: 'continuous', focusMode: 'continuous', whiteBalanceMode: 'continuous' }] })
-  } catch {}
+  try { track()?.applyConstraints({ advanced: [{ exposureMode: 'continuous', focusMode: 'continuous', whiteBalanceMode: 'continuous' }] }) } catch {}
 }
 
 function initProControls() {
-  try {
-    const t = stream?.getVideoTracks()[0]
-    const caps = t?.getCapabilities?.()
-    const sets = t?.getSettings?.()
-    if (!caps) return
-    if (caps.exposureCompensation) {
-      $('proEV').min = caps.exposureCompensation.min * 10
-      $('proEV').max = caps.exposureCompensation.max * 10
-      $('proEV').value = (sets.exposureCompensation || 0) * 10
-      $('proEVVal').textContent = (sets.exposureCompensation || 0).toFixed(1)
-    }
-    if (caps.iso) {
-      $('proISO').min = caps.iso.min
-      $('proISO').max = caps.iso.max
-      $('proISO').value = sets.iso || caps.iso.min
-      $('proISOVal').textContent = sets.iso || caps.iso.min
-    }
-    if (caps.colorTemperature) {
-      $('proWB').min = caps.colorTemperature.min
-      $('proWB').max = caps.colorTemperature.max
-      $('proWB').value = sets.colorTemperature || 5000
-      $('proWBVal').textContent = (sets.colorTemperature || 5000) + 'K'
-    }
-    $('proMF').value = 0
-    $('proMFVal').textContent = 'AF'
-  } catch {}
+  const t = track()
+  const caps = t?.getCapabilities?.()
+  const sets = t?.getSettings?.()
+  if (!caps) return
+  if (caps.exposureCompensation) {
+    $('proEV').min = caps.exposureCompensation.min * 10
+    $('proEV').max = caps.exposureCompensation.max * 10
+    $('proEV').value = (sets.exposureCompensation || 0) * 10
+    $('proEVVal').textContent = (sets.exposureCompensation || 0).toFixed(1)
+  }
+  if (caps.iso) {
+    $('proISO').min = caps.iso.min
+    $('proISO').max = caps.iso.max
+    $('proISO').value = sets.iso || caps.iso.min
+    $('proISOVal').textContent = sets.iso || caps.iso.min
+  }
+  if (caps.colorTemperature) {
+    $('proWB').min = caps.colorTemperature.min
+    $('proWB').max = caps.colorTemperature.max
+    $('proWB').value = sets.colorTemperature || 5000
+    $('proWBVal').textContent = (sets.colorTemperature || 5000) + 'K'
+  }
+  $('proMF').value = 0
+  $('proMFVal').textContent = 'AF'
 }
 
 function setProEV(v) {
   const ev = v / 10
   $('proEVVal').textContent = ev.toFixed(1)
-  try { stream?.getVideoTracks()[0]?.applyConstraints({ advanced: [{ exposureCompensation: ev }] }) } catch {}
+  try { track()?.applyConstraints({ advanced: [{ exposureCompensation: ev }] }) } catch {}
 }
 
 function setProISO(v) {
   $('proISOVal').textContent = v
-  try { stream?.getVideoTracks()[0]?.applyConstraints({ advanced: [{ exposureMode: 'manual', iso: v }] }) } catch {}
+  try { track()?.applyConstraints({ advanced: [{ exposureMode: 'manual', iso: v }] }) } catch {}
 }
 
 function setProWB(v) {
   $('proWBVal').textContent = v + 'K'
-  try { stream?.getVideoTracks()[0]?.applyConstraints({ advanced: [{ whiteBalanceMode: 'manual', colorTemperature: v }] }) } catch {}
+  try { track()?.applyConstraints({ advanced: [{ whiteBalanceMode: 'manual', colorTemperature: v }] }) } catch {}
 }
 
 function setProMF(v) {
-  try {
-    const t = stream?.getVideoTracks()[0]
-    const caps = t?.getCapabilities?.()
-    if (!caps?.focusDistance) return
-    if (v === 0) {
-      $('proMFVal').textContent = 'AF'
-      t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
-    } else {
-      const d = caps.focusDistance.min + (caps.focusDistance.max - caps.focusDistance.min) * (v / 100)
-      $('proMFVal').textContent = d.toFixed(1) + 'm'
-      t.applyConstraints({ advanced: [{ focusMode: 'manual', focusDistance: d }] })
-    }
-  } catch {}
+  const t = track()
+  const caps = t?.getCapabilities?.()
+  if (!caps?.focusDistance) return
+  if (v === 0) {
+    $('proMFVal').textContent = 'AF'
+    try { t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }) } catch {}
+  } else {
+    const d = caps.focusDistance.min + (caps.focusDistance.max - caps.focusDistance.min) * (v / 100)
+    $('proMFVal').textContent = d.toFixed(1) + 'm'
+    try { t.applyConstraints({ advanced: [{ focusMode: 'manual', focusDistance: d }] }) } catch {}
+  }
 }
 
 function applyNightMode() {
-  try {
-    const t = stream?.getVideoTracks()[0]
-    const caps = t?.getCapabilities?.()
-    if (!caps) return
-    const adv = { exposureMode: 'manual' }
-    if (caps.exposureTime) adv.exposureTime = Math.min(caps.exposureTime.max, 100000)
-    if (caps.iso) adv.iso = Math.min(caps.iso.max, 800)
-    t.applyConstraints({ advanced: [adv] })
-  } catch {}
+  const t = track()
+  const caps = t?.getCapabilities?.()
+  if (!caps) return
+  const adv = { exposureMode: 'manual' }
+  if (caps.exposureTime) adv.exposureTime = Math.min(caps.exposureTime.max, 100000)
+  if (caps.iso) adv.iso = Math.min(caps.iso.max, 800)
+  try { t.applyConstraints({ advanced: [adv] }) } catch {}
 }
-
-let processingCount = 0
 
 function showProcessing(active) {
   processingCount = active ? processingCount + 1 : Math.max(0, processingCount - 1)
   const el = $('procBadge')
-  if (processingCount > 0) {
-    el.classList.remove('hidden'); el.classList.add('flex')
-    $('procBadgeText').textContent = processingCount > 1 ? 'Обработка (' + processingCount + ')...' : 'Обработка...'
-  } else {
-    el.classList.add('hidden'); el.classList.remove('flex')
-  }
+  el.classList.toggle('hidden', processingCount === 0)
+  el.classList.toggle('flex', processingCount > 0)
+  $('procBadgeText').textContent = processingCount > 1 ? 'Обработка (' + processingCount + ')...' : 'Обработка...'
 }
 
 function showSaveOverlay(show) {
   $('saveOverlay').classList.toggle('hidden', !show)
   $('saveOverlay').classList.toggle('flex', show)
+}
+
+function updateThumb(dataUrl) {
+  $('galleryThumb').innerHTML = '<img src="' + escAttr(dataUrl) + '" class="w-full h-full object-cover">'
 }
 
 async function shoot() {
@@ -267,16 +226,13 @@ async function shoot() {
   if (flashMode === 0) torchOff()
 
   const aiActive = !!(appSettings.apiKey && appSettings.prompt)
+  log('shoot: aiActive=', aiActive, 'originals=', camSettings.originals, 'size=', w + 'x' + h)
 
   showSaveOverlay(true)
-  log('shoot: aiActive=', aiActive, 'originals=', camSettings.originals, 'size=', w + 'x' + h)
   try {
-    if (!aiActive || camSettings.originals) {
-      await saveToGallery(dataUrl)
-    }
+    if (!aiActive || camSettings.originals) await saveToGallery(dataUrl)
     updateThumb(dataUrl)
     showSaveOverlay(false)
-
     if (aiActive) {
       showProcessing(true)
       processAI(dataUrl).finally(() => showProcessing(false))
@@ -287,17 +243,6 @@ async function shoot() {
     notify('Не удалось сохранить: ' + (e?.message || e))
   }
   btn.dataset.busy = ''
-}
-
-function updateThumb(dataUrl) {
-  const btn = $('galleryThumb')
-  if (!btn || !dataUrl) return
-  btn.innerHTML = '<img src="' + escAttr(dataUrl) + '" class="w-full h-full object-cover">'
-}
-
-const MODELS = {
-  nanabanana1: 'google/gemini-2.5-flash-image',
-  nb2: 'google/gemini-3.1-flash-image-preview'
 }
 
 async function processAI(dataUrl) {
@@ -327,7 +272,7 @@ async function processAI(dataUrl) {
       await saveToGallery(dataUrl)
     }
   } catch (e) {
-    console.error('AI error:', e)
+    log('AI error:', e)
     notify('AI: ' + (e?.message || e))
     if (!camSettings.originals) {
       try { await saveToGallery(dataUrl) } catch {}

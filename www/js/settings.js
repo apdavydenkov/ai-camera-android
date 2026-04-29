@@ -12,11 +12,10 @@ function toggleSetting(btn, key) {
   saveCamSettings()
   btn.closest('.s-row')?.animate([{ background: 'rgba(255,255,255,.06)' }, { background: 'transparent' }], 300)
   if (key === 'grid') $('gridOverlay').classList.toggle('hidden', !camSettings[key])
-  if (key === 'hdr') updateHdrBtn()
 }
 
 function syncToggles() {
-  ;[['Grid','grid'],['Hdr','hdr'],['Sound','sound'],['Orig','originals']].forEach(([id, key]) => {
+  ;[['Grid','grid'],['Sound','sound'],['Orig','originals']].forEach(([id, key]) => {
     const btn = $('tog' + id)
     if (btn) applyToggle(btn, camSettings[key])
   })
@@ -33,7 +32,6 @@ function openSettings() {
 
 function closeSettings() {
   closeScreen('settingsView')
-  startCamera()
 }
 
 async function saveSettings() {
@@ -85,16 +83,11 @@ function clearLogsAndRefresh() {
 }
 
 async function copyLogs() {
-  const text = getLogs()
   const Clipboard = window.Capacitor?.Plugins?.Clipboard
+  if (!Clipboard) { notify('Clipboard плагин недоступен'); return }
+  const text = getLogs()
   try {
-    if (Clipboard) {
-      await Clipboard.write({ string: text })
-    } else if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-    } else {
-      throw new Error('No clipboard API')
-    }
+    await Clipboard.write({ string: text })
     notify('Логи скопированы (' + text.length + ' симв.)')
   } catch (e) {
     notify('Копировать не удалось: ' + (e?.message || e))
