@@ -1,0 +1,8 @@
+{
+  "appId": "com.claude.aicamera",
+  "appName": "AI Camera",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  }
+}

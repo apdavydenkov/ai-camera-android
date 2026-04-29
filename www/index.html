@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Camera</title>
+<meta name="theme-color" content="#000000">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style type="text/tailwindcss">
+@theme {
+  --color-cam-accent: #f59e0b;
+  --color-cam-red: #ef4444;
+}
+* { -webkit-tap-highlight-color: transparent }
+@keyframes spin { to { transform: rotate(360deg) } }
+
+.screen { @apply absolute inset-0 flex flex-col pointer-events-none opacity-0 z-20;
+  transform: translateX(100%);
+  transition: transform .4s cubic-bezier(.4,0,.2,1), opacity .4s cubic-bezier(.4,0,.2,1);
+}
+.screen.open { @apply pointer-events-auto opacity-100; transform: translateX(0) }
+
+html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overscroll-behavior: none }
+.s-header { @apply bg-neutral-900 }
+.s-bar { @apply flex items-center px-2 py-2 gap-1 }
+.s-bar h2 { @apply text-lg font-semibold flex-1 m-0 }
+.s-back { @apply size-10 flex items-center justify-center rounded-full shrink-0 active:bg-white/10 }
+.s-body { @apply flex-1 overflow-y-auto p-4 space-y-3 }
+.s-section { @apply text-xs text-neutral-500 font-semibold uppercase tracking-wider px-1 }
+.s-card { @apply bg-neutral-900 rounded-2xl overflow-hidden }
+.s-row { @apply flex justify-between items-center px-4 py-3.5 border-b border-neutral-800 last:border-0 }
+.s-row-link { @apply flex justify-between items-center px-4 py-3.5 border-b border-neutral-800 last:border-0 cursor-pointer active:bg-neutral-800 }
+.s-chevron { @apply size-4 shrink-0 }
+.s-toggle { @apply w-12 h-7 rounded-full relative transition-colors }
+.s-toggle span { @apply absolute w-5.5 h-5.5 rounded-full bg-white top-[3px] left-[3px] transition-transform }
+.s-val { @apply text-neutral-500 text-sm }
+</style>
+</head><body class="bg-black text-white font-sans">
+<div id="app" class="h-svh flex flex-col relative">
+
+  <!-- Camera View -->
+  <div id="cameraView" class="flex-1 relative overflow-hidden">
+    <video id="video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover bg-black"></video>
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <div id="gridOverlay" class="absolute inset-0 z-1 pointer-events-none hidden">
+      <div class="absolute left-1/3 top-0 w-px h-full bg-white/20"></div>
+      <div class="absolute left-2/3 top-0 w-px h-full bg-white/20"></div>
+      <div class="absolute top-1/3 left-0 h-px w-full bg-white/20"></div>
+      <div class="absolute top-2/3 left-0 h-px w-full bg-white/20"></div>
+    </div>
+
+    <div id="flash" class="absolute inset-0 bg-white z-10 opacity-0 pointer-events-none"></div>
+
+    <div id="focusRing" class="absolute w-15 h-15 border-[1.5px] border-cam-accent rounded-full z-3 pointer-events-none hidden"></div>
+
+    <div id="saveOverlay" class="absolute bottom-48 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-lg px-5 py-2 rounded-full text-sm z-2 hidden items-center gap-2">
+      <div class="size-3.5 border-2 border-white/30 border-t-white rounded-full" style="animation:spin .6s linear infinite"></div>
+      Сохранение...
+    </div>
+
+    <div id="procBadge" class="absolute top-12 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-lg px-3 py-1 rounded-full text-xs z-5 hidden items-center gap-1.5">
+      <div class="size-2.5 border-[1.5px] border-white/30 border-t-white rounded-full" style="animation:spin .6s linear infinite"></div>
+      <span id="procBadgeText">Обработка...</span>
+    </div>
+
+    <div class="absolute top-0 inset-x-0 px-4 pt-3 pb-3 flex justify-between items-center z-2 bg-gradient-to-b from-black/60 to-transparent">
+      <button id="flashBtn" onclick="toggleFlashMode()" class="size-10 flex items-center justify-center rounded-full active:bg-white/10">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </button>
+      <button id="hdrBtn" onclick="toggleHdr()" class="text-xs font-semibold text-cam-accent px-2 py-1.5 rounded-lg active:bg-white/10">HDR</button>
+      <button onclick="openSettings()" class="size-10 flex items-center justify-center rounded-full active:bg-white/10">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+
+    <div id="modeOverlay" class="absolute top-14 left-1/2 -translate-x-1/2 z-2"></div>
+
+    <div id="proControls" class="absolute bottom-36 inset-x-4 z-2 hidden">
+      <div class="bg-black/60 backdrop-blur-lg rounded-2xl px-4 py-3 space-y-2">
+        <div class="flex items-center gap-2"><span class="text-cam-accent text-xs font-semibold w-8">EV</span><input type="range" id="proEV" min="-20" max="20" value="0" step="1" class="flex-1 accent-cam-accent" oninput="setProEV(+this.value)"><span id="proEVVal" class="text-xs text-white/50 w-8 text-right">0</span></div>
+        <div class="flex items-center gap-2"><span class="text-cam-accent text-xs font-semibold w-8">ISO</span><input type="range" id="proISO" min="100" max="1600" value="100" step="1" class="flex-1 accent-cam-accent" oninput="setProISO(+this.value)"><span id="proISOVal" class="text-xs text-white/50 w-8 text-right">100</span></div>
+        <div class="flex items-center gap-2"><span class="text-cam-accent text-xs font-semibold w-8">WB</span><input type="range" id="proWB" min="2850" max="7000" value="5000" step="50" class="flex-1 accent-cam-accent" oninput="setProWB(+this.value)"><span id="proWBVal" class="text-xs text-white/50 w-10 text-right">5000K</span></div>
+        <div class="flex items-center gap-2"><span class="text-cam-accent text-xs font-semibold w-8">MF</span><input type="range" id="proMF" min="0" max="100" value="0" step="1" class="flex-1 accent-cam-accent" oninput="setProMF(+this.value)"><span id="proMFVal" class="text-xs text-white/50 w-10 text-right">AF</span></div>
+      </div>
+    </div>
+
+    <div class="absolute bottom-28 inset-x-0 flex justify-center gap-1 z-2">
+      <button class="mode-btn px-4 py-3 text-xs font-semibold tracking-wide text-cam-accent" onclick="setMode(this,'photo')">ФОТО</button>
+      <button class="mode-btn px-4 py-3 text-xs font-semibold tracking-wide text-white/50" onclick="setMode(this,'pro')">ПРО</button>
+      <button class="mode-btn px-4 py-3 text-xs font-semibold tracking-wide text-white/50" onclick="setMode(this,'video')">ВИДЕО</button>
+      <button class="mode-btn px-4 py-3 text-xs font-semibold tracking-wide text-white/50" onclick="setMode(this,'night')">НОЧЬ</button>
+    </div>
+
+    <div class="absolute bottom-0 inset-x-0 pb-4 pt-4 px-8 flex justify-between items-center z-2 bg-gradient-to-t from-black/70 to-transparent">
+      <button id="galleryThumb" onclick="openGallery()" class="size-12 rounded-xl border-2 border-white/20 overflow-hidden bg-neutral-800 shrink-0"></button>
+      <button id="shutter" onclick="shoot()" class="size-[72px] rounded-full border-4 border-white bg-transparent relative shrink-0">
+        <span id="shutterInner" class="absolute inset-1 rounded-full bg-white transition-transform active:scale-85"></span>
+      </button>
+      <button id="switchCamBtn" onclick="switchCamera()" class="size-12 bg-white/15 rounded-full flex items-center justify-center active:bg-white/25 shrink-0 transition-transform duration-300">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Gallery -->
+  <div id="galleryView" class="screen bg-black">
+    <div class="s-header"><div class="s-bar">
+      <button onclick="closeGallery()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h2>Фото</h2>
+    </div></div>
+    <div id="galContent" class="flex-1 overflow-y-auto"></div>
+  </div>
+
+  <!-- Photo viewer -->
+  <div id="photoView" class="screen bg-black z-30">
+    <div class="absolute top-3 inset-x-4 flex items-center z-2">
+      <button onclick="closePhoto()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span id="photoCounter" class="flex-1 text-center text-xs text-neutral-400"></span>
+      <button onclick="deletePhoto()" class="size-10 flex items-center justify-center active:bg-white/10 rounded-full">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      </button>
+    </div>
+    <div id="photoSwipe" class="flex-1 w-full flex items-center justify-center overflow-hidden relative touch-none">
+      <img id="photoFull" class="max-w-full max-h-full object-contain origin-center" style="transform:scale(1) translate(0px,0px)">
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="settingsView" class="screen bg-black">
+    <div class="s-header"><div class="s-bar">
+      <button onclick="closeSettings()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h2>Настройки</h2>
+    </div></div>
+    <div class="s-body">
+      <div class="s-section">Камера</div>
+      <div class="s-card">
+        <div class="s-row cursor-pointer transition-colors" onclick="toggleSetting($('togGrid'),'grid')"><span>Сетка</span><button class="s-toggle bg-neutral-700" id="togGrid"><span></span></button></div>
+        <div class="s-row cursor-pointer transition-colors" onclick="toggleSetting($('togHdr'),'hdr')"><span>HDR</span><button class="s-toggle bg-neutral-700" id="togHdr"><span></span></button></div>
+        <div class="s-row cursor-pointer transition-colors" onclick="toggleSetting($('togSound'),'sound')"><span>Звук затвора</span><button class="s-toggle bg-neutral-700" id="togSound"><span></span></button></div>
+        <div class="s-row cursor-pointer transition-colors" onclick="toggleSetting($('togOrig'),'originals')"><span>Сохранять оригиналы</span><button class="s-toggle bg-neutral-700" id="togOrig"><span></span></button></div>
+      </div>
+
+      <div id="origSection" class="s-card hidden">
+        <div class="s-row-link" onclick="openOriginals()"><span>Оригиналы фото</span><svg class="s-chevron" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+      </div>
+
+      <div class="s-card">
+        <div class="s-row-link" onclick="openDevSettings()"><span class="text-neutral-500 text-sm">Версия 1.0 (Android)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dev Settings -->
+  <div id="devView" class="screen bg-black z-25">
+    <div class="s-header"><div class="s-bar">
+      <button onclick="closeDevSettings()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h2>Разработчик</h2>
+    </div></div>
+    <div class="s-body">
+      <div class="s-section">OpenRouter API ключ</div>
+      <input type="password" id="apiKeyInput" placeholder="sk-or-v1-..." class="bg-neutral-900 text-white border border-neutral-800 rounded-xl p-3 text-sm outline-none font-mono w-full" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="text-xs text-neutral-500 px-1">Без ключа AI-обработка отключена. Ключ хранится только на устройстве.</div>
+
+      <div class="s-section">Модель</div>
+      <input type="hidden" id="modelSelect" value="nanabanana1">
+      <div class="flex gap-2">
+        <button onclick="selectModel('nanabanana1')" id="mdl-nanabanana1" class="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors bg-white text-black">NanaBanana 1</button>
+        <button onclick="selectModel('nb2')" id="mdl-nb2" class="flex-1 py-3 rounded-xl text-sm font-semibold transition-colors bg-neutral-800 text-neutral-500">NanaBanana 2</button>
+      </div>
+      <div class="s-section">Промпт обработки</div>
+      <textarea id="promptInput" placeholder="Например: добавь маленьких гномиков в углах кадра" class="bg-neutral-900 text-white border border-neutral-800 rounded-xl p-3 text-sm min-h-24 outline-none resize-y font-sans w-full"></textarea>
+      <button onclick="saveSettings()" class="w-full bg-blue-500 text-white rounded-xl py-3 text-sm font-semibold active:bg-blue-600">Применить</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/gallery.js"></script>
+<script src="js/settings.js"></script>
+<script>
+(async () => {
+  await loadCamSettings()
+  await loadAppSettings()
+  await ensureCameraPermission()
+  startCamera()
+  preloadPhotos()
+  updateHdrBtn()
+  if (camSettings.grid) $('gridOverlay').classList.remove('hidden')
+  if (camSettings.originals) $('origSection').classList.remove('hidden')
+  syncToggles()
+})()
+</script>
+</body></html>

@@ -1,0 +1,24 @@
+{
+  "name": "ai-camera-android",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "private": "true",
+  "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/camera": "^8.2.0",
+    "@capacitor/core": "^8.3.1",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/preferences": "^8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.3.1"
+  }
+}
