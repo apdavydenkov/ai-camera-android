@@ -55,8 +55,23 @@ async function ensureCameraPermission() {
     const Camera = window.Capacitor?.Plugins?.Camera
     if (!Camera) return
     const status = await Camera.checkPermissions()
-    if (status.camera !== 'granted') {
-      await Camera.requestPermissions({ permissions: ['camera'] })
-    }
+    const needed = []
+    if (status.camera !== 'granted') needed.push('camera')
+    if (status.photos !== 'granted') needed.push('photos')
+    if (needed.length) await Camera.requestPermissions({ permissions: needed })
   } catch (e) { console.error('permission:', e) }
+}
+
+function notify(msg) {
+  let n = document.getElementById('toast')
+  if (!n) {
+    n = document.createElement('div')
+    n.id = 'toast'
+    n.className = 'absolute bottom-44 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-lg px-4 py-2 rounded-full text-sm z-50 transition-opacity duration-300'
+    document.body.appendChild(n)
+  }
+  n.textContent = msg
+  n.style.opacity = '1'
+  clearTimeout(n._t)
+  n._t = setTimeout(() => { n.style.opacity = '0' }, 3000)
 }

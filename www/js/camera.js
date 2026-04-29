@@ -271,6 +271,7 @@ async function shoot() {
     if (!aiActive || camSettings.originals) {
       await saveToGallery(dataUrl)
     }
+    updateThumb(dataUrl)
     showSaveOverlay(false)
 
     if (aiActive) {
@@ -280,8 +281,15 @@ async function shoot() {
   } catch (e) {
     console.error('shoot:', e)
     showSaveOverlay(false)
+    notify('Не удалось сохранить: ' + (e?.message || e))
   }
   btn.dataset.busy = ''
+}
+
+function updateThumb(dataUrl) {
+  const btn = $('galleryThumb')
+  if (!btn || !dataUrl) return
+  btn.innerHTML = '<img src="' + escAttr(dataUrl) + '" class="w-full h-full object-cover">'
 }
 
 const MODELS = {
@@ -311,11 +319,13 @@ async function processAI(dataUrl) {
     const img = data.choices?.[0]?.message?.images?.[0]?.image_url?.url
     if (img) {
       await saveToGallery(img)
+      updateThumb(img)
     } else if (!camSettings.originals) {
       await saveToGallery(dataUrl)
     }
   } catch (e) {
     console.error('AI error:', e)
+    notify('AI: ' + (e?.message || e))
     if (!camSettings.originals) {
       try { await saveToGallery(dataUrl) } catch {}
     }

@@ -35,8 +35,8 @@ html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overs
 .s-toggle span { @apply absolute w-5.5 h-5.5 rounded-full bg-white top-[3px] left-[3px] transition-transform }
 .s-val { @apply text-neutral-500 text-sm }
 
-.cam-top-bar { padding-top: calc(env(safe-area-inset-top) + 0.75rem) }
-.cam-badge-top { top: calc(env(safe-area-inset-top) + 3rem) }
+.cam-top-bar { padding-top: env(safe-area-inset-top) }
+.cam-badge-top { top: calc(env(safe-area-inset-top) + 2.5rem) }
 </style>
 </head><body class="bg-black text-white font-sans">
 <div id="app" class="h-svh flex flex-col relative">
@@ -97,6 +97,9 @@ html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overs
 
     <div class="absolute bottom-0 inset-x-0 pb-4 pt-4 px-8 z-2 bg-gradient-to-t from-black/70 to-transparent" style="padding-bottom:calc(1rem + env(safe-area-inset-bottom))">
       <div class="relative h-[72px]">
+        <button id="galleryThumb" onclick="openSystemGallery()" class="absolute left-0 top-1/2 -translate-y-1/2 size-12 rounded-xl border-2 border-white/20 overflow-hidden bg-neutral-800 flex items-center justify-center">
+          <svg class="w-5 h-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M5 3v2"/></svg>
+        </button>
         <button id="shutter" onclick="shoot()" class="absolute left-1/2 -translate-x-1/2 size-[72px] rounded-full border-4 border-white bg-transparent">
           <span id="shutterInner" class="absolute inset-1 rounded-full bg-white transition-transform active:scale-85"></span>
         </button>

@@ -26,8 +26,42 @@ async function saveAppSettings() {
   } catch (e) { console.error('saveAppSettings:', e) }
 }
 
+const ALBUM_NAME = 'AI Camera'
+let albumId = null
+
+async function ensureAlbum() {
+  if (albumId) return albumId
+  const Media = plugins().Media
+  if (!Media) return null
+  try {
+    let r = await Media.getAlbums()
+    let alb = (r.albums || []).find(a => a.name === ALBUM_NAME)
+    if (!alb) {
+      await Media.createAlbum({ name: ALBUM_NAME })
+      r = await Media.getAlbums()
+      alb = (r.albums || []).find(a => a.name === ALBUM_NAME)
+    }
+    if (alb) albumId = alb.identifier
+  } catch (e) { console.error('ensureAlbum:', e) }
+  return albumId
+}
+
 async function saveToGallery(dataUrl) {
   const Media = plugins().Media
-  if (!Media) { console.error('Media plugin missing'); return }
-  await Media.savePhoto({ path: dataUrl })
+  if (!Media) throw new Error('Media plugin missing')
+  const opts = { path: dataUrl }
+  const id = await ensureAlbum()
+  if (id) opts.albumIdentifier = id
+  const r = await Media.savePhoto(opts)
+  return r?.filePath || null
+}
+
+async function openSystemGallery() {
+  const App = plugins().App
+  if (!App) return
+  try {
+    await App.openUrl({ url: 'content://media/external/images/media' })
+  } catch (e) {
+    console.error('openUrl gallery:', e)
+  }
 }
