@@ -1,6 +1,3 @@
-const PHOTOS_DIR = 'photos'
-const DATA_DIR = 'DATA'
-
 function plugins() { return window.Capacitor?.Plugins || {} }
 
 async function loadCamSettings() {
@@ -29,45 +26,8 @@ async function saveAppSettings() {
   } catch (e) { console.error('saveAppSettings:', e) }
 }
 
-async function ensurePhotosDir() {
-  try {
-    await plugins().Filesystem.mkdir({ path: PHOTOS_DIR, directory: DATA_DIR, recursive: true })
-  } catch {}
-}
-
-function stripDataUrl(dataUrl) {
-  return dataUrl.replace(/^data:image\/\w+;base64,/, '')
-}
-
-async function writePhoto(name, base64) {
-  await ensurePhotosDir()
-  await plugins().Filesystem.writeFile({
-    path: PHOTOS_DIR + '/' + name,
-    data: base64,
-    directory: DATA_DIR
-  })
-}
-
-async function deletePhotoFile(name) {
-  try {
-    await plugins().Filesystem.deleteFile({ path: PHOTOS_DIR + '/' + name, directory: DATA_DIR })
-  } catch {}
-}
-
-async function listPhotoFiles() {
-  await ensurePhotosDir()
-  try {
-    const r = await plugins().Filesystem.readdir({ path: PHOTOS_DIR, directory: DATA_DIR })
-    return (r.files || []).filter(f => f.type === 'file' && /\.(jpg|jpeg|png)$/i.test(f.name))
-  } catch (e) { console.error('readdir:', e); return [] }
-}
-
-async function photoUrl(name) {
-  const r = await plugins().Filesystem.getUri({ path: PHOTOS_DIR + '/' + name, directory: DATA_DIR })
-  return window.Capacitor.convertFileSrc(r.uri)
-}
-
-async function readPhotoBase64(name) {
-  const r = await plugins().Filesystem.readFile({ path: PHOTOS_DIR + '/' + name, directory: DATA_DIR })
-  return r.data
+async function saveToGallery(dataUrl) {
+  const Media = plugins().Media
+  if (!Media) { console.error('Media plugin missing'); return }
+  await Media.savePhoto({ path: dataUrl })
 }

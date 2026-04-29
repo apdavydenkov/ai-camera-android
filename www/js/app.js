@@ -7,10 +7,9 @@ function escAttr(str) {
 let camSettings = { grid: false, hdr: true, sound: true, originals: false }
 let appSettings = { apiKey: '', prompt: '', model: 'nanabanana1' }
 
-const screenStack = ['devView', 'photoView', 'galleryView', 'settingsView']
+const screenStack = ['devView', 'settingsView']
 
 function openScreen(id) {
-  history.pushState({ view: id }, '')
   $(id).classList.add('open')
 }
 
@@ -22,8 +21,6 @@ function closeTopScreen() {
   for (const id of screenStack) {
     if ($(id).classList.contains('open')) {
       if (id === 'devView') closeDevSettings()
-      else if (id === 'photoView') closePhoto()
-      else if (id === 'galleryView') closeGallery()
       else if (id === 'settingsView') closeSettings()
       return true
     }
@@ -31,28 +28,27 @@ function closeTopScreen() {
   return false
 }
 
-history.pushState(null, '', location.href)
-window.addEventListener('popstate', () => {
-  history.pushState(null, '', location.href)
-  closeTopScreen()
-})
+async function setupNative() {
+  const App = window.Capacitor?.Plugins?.App
+  if (App) {
+    App.addListener('backButton', () => {
+      if (!closeTopScreen()) App.exitApp()
+    })
+  }
 
-;(function() {
-  let sx = 0, sy = 0, edge = false
-  document.addEventListener('touchstart', e => {
-    sx = e.touches[0].clientX; sy = e.touches[0].clientY
-    edge = sx < 30
-  })
-  document.addEventListener('touchend', e => {
-    if (!edge) return
-    const dx = e.changedTouches[0].clientX - sx
-    const dy = Math.abs(e.changedTouches[0].clientY - sy)
-    if (dx > 60 && dy < 100) {
-      e.preventDefault()
-      closeTopScreen()
-    }
-  })
-})()
+  const StatusBar = window.Capacitor?.Plugins?.StatusBar
+  if (StatusBar) {
+    try {
+      await StatusBar.setOverlaysWebView({ overlay: true })
+      await StatusBar.setStyle({ style: 'DARK' })
+    } catch (e) { console.error('StatusBar:', e) }
+  }
+
+  const SplashScreen = window.Capacitor?.Plugins?.SplashScreen
+  if (SplashScreen) {
+    try { await SplashScreen.hide() } catch {}
+  }
+}
 
 async function ensureCameraPermission() {
   try {

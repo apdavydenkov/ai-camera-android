@@ -13,7 +13,6 @@ function toggleSetting(btn, key) {
   btn.closest('.s-row')?.animate([{ background: 'rgba(255,255,255,.06)' }, { background: 'transparent' }], 300)
   if (key === 'grid') $('gridOverlay').classList.toggle('hidden', !camSettings[key])
   if (key === 'hdr') updateHdrBtn()
-  if (key === 'originals') $('origSection').classList.toggle('hidden', !camSettings[key])
 }
 
 function syncToggles() {

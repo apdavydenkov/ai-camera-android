@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Camera</title>
 <meta name="theme-color" content="#000000">
+<style>html,body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif}</style>
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <style type="text/tailwindcss">
 @theme {
@@ -20,7 +21,7 @@
 .screen.open { @apply pointer-events-auto opacity-100; transform: translateX(0) }
 
 html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overscroll-behavior: none }
-.s-header { @apply bg-neutral-900 }
+.s-header { @apply bg-neutral-900; padding-top: env(safe-area-inset-top) }
 .s-bar { @apply flex items-center px-2 py-2 gap-1 }
 .s-bar h2 { @apply text-lg font-semibold flex-1 m-0 }
 .s-back { @apply size-10 flex items-center justify-center rounded-full shrink-0 active:bg-white/10 }
@@ -33,6 +34,9 @@ html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overs
 .s-toggle { @apply w-12 h-7 rounded-full relative transition-colors }
 .s-toggle span { @apply absolute w-5.5 h-5.5 rounded-full bg-white top-[3px] left-[3px] transition-transform }
 .s-val { @apply text-neutral-500 text-sm }
+
+.cam-top-bar { padding-top: calc(env(safe-area-inset-top) + 0.75rem) }
+.cam-badge-top { top: calc(env(safe-area-inset-top) + 3rem) }
 </style>
 </head><body class="bg-black text-white font-sans">
 <div id="app" class="h-svh flex flex-col relative">
@@ -58,12 +62,12 @@ html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overs
       Сохранение...
     </div>
 
-    <div id="procBadge" class="absolute top-12 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-lg px-3 py-1 rounded-full text-xs z-5 hidden items-center gap-1.5">
+    <div id="procBadge" class="cam-badge-top absolute left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-lg px-3 py-1 rounded-full text-xs z-5 hidden items-center gap-1.5">
       <div class="size-2.5 border-[1.5px] border-white/30 border-t-white rounded-full" style="animation:spin .6s linear infinite"></div>
       <span id="procBadgeText">Обработка...</span>
     </div>
 
-    <div class="absolute top-0 inset-x-0 px-4 pt-3 pb-3 flex justify-between items-center z-2 bg-gradient-to-b from-black/60 to-transparent">
+    <div class="cam-top-bar absolute top-0 inset-x-0 px-4 pb-3 flex justify-between items-center z-2 bg-gradient-to-b from-black/60 to-transparent">
       <button id="flashBtn" onclick="toggleFlashMode()" class="size-10 flex items-center justify-center rounded-full active:bg-white/10">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
       </button>
@@ -91,37 +95,15 @@ html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overs
       <button class="mode-btn px-4 py-3 text-xs font-semibold tracking-wide text-white/50" onclick="setMode(this,'night')">НОЧЬ</button>
     </div>
 
-    <div class="absolute bottom-0 inset-x-0 pb-4 pt-4 px-8 flex justify-between items-center z-2 bg-gradient-to-t from-black/70 to-transparent">
-      <button id="galleryThumb" onclick="openGallery()" class="size-12 rounded-xl border-2 border-white/20 overflow-hidden bg-neutral-800 shrink-0"></button>
-      <button id="shutter" onclick="shoot()" class="size-[72px] rounded-full border-4 border-white bg-transparent relative shrink-0">
-        <span id="shutterInner" class="absolute inset-1 rounded-full bg-white transition-transform active:scale-85"></span>
-      </button>
-      <button id="switchCamBtn" onclick="switchCamera()" class="size-12 bg-white/15 rounded-full flex items-center justify-center active:bg-white/25 shrink-0 transition-transform duration-300">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-      </button>
-    </div>
-  </div>
-
-  <!-- Gallery -->
-  <div id="galleryView" class="screen bg-black">
-    <div class="s-header"><div class="s-bar">
-      <button onclick="closeGallery()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <h2>Фото</h2>
-    </div></div>
-    <div id="galContent" class="flex-1 overflow-y-auto"></div>
-  </div>
-
-  <!-- Photo viewer -->
-  <div id="photoView" class="screen bg-black z-30">
-    <div class="absolute top-3 inset-x-4 flex items-center z-2">
-      <button onclick="closePhoto()" class="s-back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <span id="photoCounter" class="flex-1 text-center text-xs text-neutral-400"></span>
-      <button onclick="deletePhoto()" class="size-10 flex items-center justify-center active:bg-white/10 rounded-full">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-      </button>
-    </div>
-    <div id="photoSwipe" class="flex-1 w-full flex items-center justify-center overflow-hidden relative touch-none">
-      <img id="photoFull" class="max-w-full max-h-full object-contain origin-center" style="transform:scale(1) translate(0px,0px)">
+    <div class="absolute bottom-0 inset-x-0 pb-4 pt-4 px-8 z-2 bg-gradient-to-t from-black/70 to-transparent" style="padding-bottom:calc(1rem + env(safe-area-inset-bottom))">
+      <div class="relative h-[72px]">
+        <button id="shutter" onclick="shoot()" class="absolute left-1/2 -translate-x-1/2 size-[72px] rounded-full border-4 border-white bg-transparent">
+          <span id="shutterInner" class="absolute inset-1 rounded-full bg-white transition-transform active:scale-85"></span>
+        </button>
+        <button id="switchCamBtn" onclick="switchCamera()" class="absolute right-0 top-1/2 -translate-y-1/2 size-12 bg-white/15 rounded-full flex items-center justify-center active:bg-white/25 transition-transform duration-300">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -138,10 +120,6 @@ html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overs
         <div class="s-row cursor-pointer transition-colors" onclick="toggleSetting($('togHdr'),'hdr')"><span>HDR</span><button class="s-toggle bg-neutral-700" id="togHdr"><span></span></button></div>
         <div class="s-row cursor-pointer transition-colors" onclick="toggleSetting($('togSound'),'sound')"><span>Звук затвора</span><button class="s-toggle bg-neutral-700" id="togSound"><span></span></button></div>
         <div class="s-row cursor-pointer transition-colors" onclick="toggleSetting($('togOrig'),'originals')"><span>Сохранять оригиналы</span><button class="s-toggle bg-neutral-700" id="togOrig"><span></span></button></div>
-      </div>
-
-      <div id="origSection" class="s-card hidden">
-        <div class="s-row-link" onclick="openOriginals()"><span>Оригиналы фото</span><svg class="s-chevron" viewBox="0 0 24 24" fill="none" stroke="#737373" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
       </div>
 
       <div class="s-card">
@@ -177,18 +155,16 @@ html, body { @apply h-svh overflow-hidden select-none; touch-action: none; overs
 <script src="js/app.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/camera.js"></script>
-<script src="js/gallery.js"></script>
 <script src="js/settings.js"></script>
 <script>
 (async () => {
   await loadCamSettings()
   await loadAppSettings()
+  await setupNative()
   await ensureCameraPermission()
   startCamera()
-  preloadPhotos()
   updateHdrBtn()
   if (camSettings.grid) $('gridOverlay').classList.remove('hidden')
-  if (camSettings.originals) $('origSection').classList.remove('hidden')
   syncToggles()
 })()
 </script>

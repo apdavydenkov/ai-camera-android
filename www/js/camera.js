@@ -222,6 +222,24 @@ function applyNightMode() {
   } catch {}
 }
 
+const processingCount = { n: 0 }
+
+function showProcessing(active) {
+  if (active) processingCount.n++; else processingCount.n = Math.max(0, processingCount.n - 1)
+  const el = $('procBadge')
+  if (processingCount.n > 0) {
+    el.classList.remove('hidden'); el.classList.add('flex')
+    $('procBadgeText').textContent = processingCount.n > 1 ? 'Обработка (' + processingCount.n + ')...' : 'Обработка...'
+  } else {
+    el.classList.add('hidden'); el.classList.remove('flex')
+  }
+}
+
+function showSaveOverlay(show) {
+  $('saveOverlay').classList.toggle('hidden', !show)
+  $('saveOverlay').classList.toggle('flex', show)
+}
+
 async function shoot() {
   const btn = $('shutter')
   if (btn.dataset.busy) return
@@ -243,20 +261,21 @@ async function shoot() {
   c.width = w; c.height = h
   c.getContext('2d').drawImage(v, 0, 0, w, h)
   const dataUrl = c.toDataURL('image/jpeg', 0.85)
-  const base64 = stripDataUrl(dataUrl)
 
   if (flashMode === 0) torchOff()
 
+  const aiActive = !!(appSettings.apiKey && appSettings.prompt)
+
   showSaveOverlay(true)
   try {
-    const ts = new Date().toISOString().replace(/[:.T-]/g, '').slice(0, 14)
-    await writePhoto(`${ts}_orig.jpg`, base64)
-    updateThumb(await photoUrl(`${ts}_orig.jpg`))
+    if (!aiActive || camSettings.originals) {
+      await saveToGallery(dataUrl)
+    }
     showSaveOverlay(false)
 
-    if (appSettings.apiKey && appSettings.prompt) {
-      startProcessing(ts)
-      processAI(dataUrl, ts)
+    if (aiActive) {
+      showProcessing(true)
+      processAI(dataUrl).finally(() => showProcessing(false))
     }
   } catch (e) {
     console.error('shoot:', e)
@@ -270,7 +289,7 @@ const MODELS = {
   nb2: 'google/gemini-3.1-flash-image-preview'
 }
 
-async function processAI(dataUrl, ts) {
+async function processAI(dataUrl) {
   try {
     const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -291,20 +310,14 @@ async function processAI(dataUrl, ts) {
     const data = await r.json()
     const img = data.choices?.[0]?.message?.images?.[0]?.image_url?.url
     if (img) {
-      const procBase64 = stripDataUrl(img)
-      await writePhoto(`${ts}_proc.jpg`, procBase64)
-    } else {
-      console.log('No image returned for ' + ts, data)
+      await saveToGallery(img)
+    } else if (!camSettings.originals) {
+      await saveToGallery(dataUrl)
     }
   } catch (e) {
     console.error('AI error:', e)
-  } finally {
-    finishProcessing(ts)
-    preloadPhotos()
+    if (!camSettings.originals) {
+      try { await saveToGallery(dataUrl) } catch {}
+    }
   }
-}
-
-function showSaveOverlay(show) {
-  $('saveOverlay').classList.toggle('hidden', !show)
-  $('saveOverlay').classList.toggle('flex', show)
 }
